@@ -5,12 +5,13 @@
 #include <poll.h>
 #include <netinet/in.h>
 #include <unistd.h>
+#include <algorithm>
 #include <string.h>
 
 #define HEARTBEAT_INTERVAL 10
 
 // Define the maximum number of users that can be in a room
-onst intc MAX_USERS_PER_ROOM = 16;
+const int MAX_USERS_PER_ROOM = 16;
 
 // Define user roles
 enum class UserRole {
@@ -23,6 +24,10 @@ class User {
 public:
     User(int socket, UserRole role) : socket_(socket), role_(role) {}
 
+    bool operator==(const User& other) { return socket_ == other.socket_; }
+    
+    bool operator!=(const User& other) { return !(*this == other); }
+    
     // Get user's socket descriptor
     int getSocket() { return socket_; }
 
@@ -37,8 +42,13 @@ private:
 // Define room class
 class Room {
 public:
+    int getUserCount() { return users_.size(); }
+    
+    std::vector<User>& getUsers() { return users_; }
+    
     Room(int id) : id_(id) {}
-
+    
+    Room() {}
     // Get room's ID
     int getId() { return id_; }
 
@@ -77,6 +87,7 @@ public:
 
     // Start the server
     void start() {
+        std::cout<<"Server started..."<<std::endl;
         // Create a socket
         int socketDescriptor = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -137,6 +148,7 @@ int nextRoomId_;
 void sendRoomList(int clientSocket) {
     // Build the list of room IDs
     std::string roomList;
+    roomList +="rooms" + '\n';
     for (auto& room : rooms_) {
         roomList += std::to_string(room.first) + '\n';
     }
@@ -169,7 +181,7 @@ void handleRequest(int clientSocket, char* requestBuffer, int requestSize) {
 
         // Check if the room is full
         Room& room = rooms_[roomId];
-        if (room.users_.size() >= MAX_USERS_PER_ROOM) {
+        if (room.getUserCount() >= MAX_USERS_PER_ROOM) {
             send(clientSocket, "room full", 9, 0);
             return;
         }
@@ -191,24 +203,22 @@ void handleRequest(int clientSocket, char* requestBuffer, int requestSize) {
 void sendHeartbeat() {
     for (auto& room : rooms_) {
         Room& current_room = room.second;
-        for (auto& user : current_room.users_) {
+        for (auto& user : current_room.getUsers()) {
             int socket = user.getSocket();
             // send the message
             int sent = send(socket, "heartbeat", 9, 0);
             if (sent <= 0)
             {
-                cout << "User is disconnected" << endl;
-                closesocket(socket);
-                current_room.users_.erase(user);
+                std::cout << "User is disconnected" << std::endl;
+                close(socket);
+                current_room.removeUser(user);
             }
         }
 
-        Sleep(HEARTBEAT_INTERVAL * 1000);
+        sleep(HEARTBEAT_INTERVAL * 1000);
         }
     }
-}
-
-// Remove empty rooms from the server
+    // Remove empty rooms from the server
 void removeEmptyRooms() {
     for (auto it = rooms_.begin(); it != rooms_.end();) {
         if (it->second.isEmpty()) {
@@ -219,6 +229,8 @@ void removeEmptyRooms() {
     }
 }
 };
+
+
 
 int main() {
 Server server;
