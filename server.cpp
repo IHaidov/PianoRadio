@@ -117,8 +117,7 @@ public:
                 int clientSocket = accept(socketDescriptor, (sockaddr*) &clientAddress, &clientAddressSize);
                 // Start a new thread to handle the connection
                 std::thread([this, clientSocket]() {
-                // Send the list of active rooms to the client
-                sendRoomList(clientSocket);
+                
 
                 // Wait for the client to send a request to create or join a room
                 char requestBuffer[1024];
@@ -159,6 +158,9 @@ void sendRoomList(int clientSocket) {
 
 // Handle a request to create or join a room
 void handleRequest(int clientSocket, char* requestBuffer, int requestSize) {
+    // Send the list of active rooms to the client
+    sendRoomList(clientSocket);
+
     std::string request(requestBuffer, requestSize);
     if (request.substr(0, 6) == "create") {
         // Create a new room
