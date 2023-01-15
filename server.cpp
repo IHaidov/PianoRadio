@@ -119,12 +119,10 @@ public:
                 std::thread([this, clientSocket]() {
                 
 
-                // Wait for the client to send a request to create or join a room
-                char requestBuffer[1024];
-                int requestSize = recv(clientSocket, requestBuffer, sizeof(requestBuffer), 0);
+
 
                 // Process the request
-                handleRequest(clientSocket, requestBuffer, requestSize);
+                handleRequest(clientSocket);
 
                 // Close the socket
                 close(clientSocket);
@@ -157,9 +155,13 @@ void sendRoomList(int clientSocket) {
 }
 
 // Handle a request to create or join a room
-void handleRequest(int clientSocket, char* requestBuffer, int requestSize) {
+void handleRequest(int clientSocket) {
     // Send the list of active rooms to the client
     sendRoomList(clientSocket);
+
+    // Wait for the client to send a request to create or join a room
+    char requestBuffer[1024];
+    int requestSize = recv(clientSocket, requestBuffer, sizeof(requestBuffer), 0);
 
     std::string request(requestBuffer, requestSize);
     if (request.substr(0, 6) == "create") {
